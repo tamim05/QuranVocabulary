@@ -5,9 +5,10 @@ This repository contains the official releases for our Kotlin Multiplatform Desk
 ## Download Links
 
 ### Latest Release
-- **Linux**: [desktop-linux-latest.tar.gz](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-linux-latest.tar.gz)
-- **Windows**: [desktop-windows-latest.zip](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-windows-latest.zip)
-- **macOS**: [desktop-macos-latest.tar.gz](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-macos-latest.tar.gz)
+- **Linux (DEB)**: [desktop-latest.deb](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.deb)
+- **Windows (MSI)**: [desktop-latest.msi](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.msi)
+- **Windows (EXE)**: [desktop-latest.exe](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.exe)
+- **macOS (DMG)**: [desktop-latest.dmg](https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.dmg)
 
 ### Release Information
 The latest release information is available in JSON format: [latest-release.json](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/main/latest-release.json)
@@ -16,8 +17,14 @@ The latest release information is available in JSON format: [latest-release.json
 
 ### Release Files
 Each release includes both versioned and latest files:
-- `desktop-{platform}-{version}.{ext}` - Specific version downloads
-- `desktop-{platform}-latest.{ext}` - Always points to the latest version
+- `desktop-{version}.deb` - Linux DEB package (specific version)
+- `desktop-latest.deb` - Linux DEB package (always latest)
+- `desktop-{version}.msi` - Windows MSI installer (specific version)
+- `desktop-latest.msi` - Windows MSI installer (always latest)
+- `desktop-{version}.exe` - Windows portable executable (specific version)
+- `desktop-latest.exe` - Windows portable executable (always latest)
+- `desktop-{version}.dmg` - macOS DMG installer (specific version)
+- `desktop-latest.dmg` - macOS DMG installer (always latest)
 
 ### Metadata Files
 - `latest-release.json` - Information about the current latest release
@@ -39,22 +46,31 @@ Example response:
   "commit_sha": "abc123...",
   "files": {
     "linux": {
-      "versioned": "desktop-linux-1.2.3.tar.gz",
-      "latest": "desktop-linux-latest.tar.gz"
+      "deb": "desktop-1.2.3.deb",
+      "latest_deb": "desktop-latest.deb"
     },
     "windows": {
-      "versioned": "desktop-windows-1.2.3.zip",
-      "latest": "desktop-windows-latest.zip"
+      "msi": "desktop-1.2.3.msi",
+      "latest_msi": "desktop-latest.msi",
+      "exe": "desktop-1.2.3.exe",
+      "latest_exe": "desktop-latest.exe"
     },
     "macos": {
-      "versioned": "desktop-macos-1.2.3.tar.gz",
-      "latest": "desktop-macos-latest.tar.gz"
+      "dmg": "desktop-1.2.3.dmg",
+      "latest_dmg": "desktop-latest.dmg"
     }
   },
   "download_urls": {
-    "linux": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-linux-latest.tar.gz",
-    "windows": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-windows-latest.zip",
-    "macos": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-macos-latest.tar.gz"
+    "linux": {
+      "deb": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.deb"
+    },
+    "windows": {
+      "msi": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.msi",
+      "exe": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.exe"
+    },
+    "macos": {
+      "dmg": "https://github.com/YOUR_USERNAME/YOUR_PUBLIC_REPO/releases/latest/download/desktop-latest.dmg"
+    }
   }
 }
 ```
