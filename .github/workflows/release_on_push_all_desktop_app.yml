@@ -1,0 +1,248 @@
+name: Auto Release Desktop Apps
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'version-*.txt'
+      - '*.dmg'
+      - '*.msi'
+      - '*.deb'
+  workflow_dispatch:
+
+jobs:
+  check-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for all platform files
+        id: check_files
+        run: |
+          echo "Checking for required files..."
+          
+          # Check if all required files exist
+          FILES_EXIST=true
+          MISSING_FILES=""
+          
+          if [ ! -f "quran-vocabulary.dmg" ]; then
+            FILES_EXIST=false
+            MISSING_FILES="$MISSING_FILES macOS(dmg)"
+          fi
+          
+          if [ ! -f "quran-vocabulary.msi" ]; then
+            FILES_EXIST=false
+            MISSING_FILES="$MISSING_FILES Windows(msi)"
+          fi
+          
+          if [ ! -f "quran-vocabulary.deb" ]; then
+            FILES_EXIST=false
+            MISSING_FILES="$MISSING_FILES Linux(deb)"
+          fi
+          
+          echo "FILES_EXIST=$FILES_EXIST" >> $GITHUB_OUTPUT
+          echo "MISSING_FILES=$MISSING_FILES" >> $GITHUB_OUTPUT
+          
+          if [ "$FILES_EXIST" = "true" ]; then
+            echo "✅ All platform files found!"
+          else
+            echo "❌ Missing files: $MISSING_FILES"
+          fi
+
+      - name: Extract version information
+        id: version_info
+        if: steps.check_files.outputs.FILES_EXIST == 'true'
+        run: |
+          # Get versions from all platform version files
+          MACOS_VERSION=""
+          WINDOWS_VERSION=""
+          LINUX_VERSION=""
+          
+          if [ -f "version-macos.txt" ]; then
+            MACOS_VERSION=$(cat version-macos.txt)
+          fi
+          
+          if [ -f "version-windows.txt" ]; then
+            WINDOWS_VERSION=$(cat version-windows.txt)
+          fi
+          
+          if [ -f "version-linux.txt" ]; then
+            LINUX_VERSION=$(cat version-linux.txt)
+          fi
+          
+          echo "MACOS_VERSION=$MACOS_VERSION" >> $GITHUB_OUTPUT
+          echo "WINDOWS_VERSION=$WINDOWS_VERSION" >> $GITHUB_OUTPUT
+          echo "LINUX_VERSION=$LINUX_VERSION" >> $GITHUB_OUTPUT
+          
+          # Use the first available version as the release version
+          RELEASE_VERSION=""
+          if [ -n "$MACOS_VERSION" ]; then
+            RELEASE_VERSION="$MACOS_VERSION"
+          elif [ -n "$WINDOWS_VERSION" ]; then
+            RELEASE_VERSION="$WINDOWS_VERSION"
+          elif [ -n "$LINUX_VERSION" ]; then
+            RELEASE_VERSION="$LINUX_VERSION"
+          fi
+          
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Release version will be: $RELEASE_VERSION"
+
+      - name: Check if release already exists
+        id: check_release
+        if: steps.check_files.outputs.FILES_EXIST == 'true'
+        run: |
+          RELEASE_VERSION="${{ steps.version_info.outputs.RELEASE_VERSION }}"
+          
+          # Check if a release with this tag already exists
+          RELEASE_EXISTS=$(gh release view "v$RELEASE_VERSION" >/dev/null 2>&1 && echo "true" || echo "false")
+          
+          echo "RELEASE_EXISTS=$RELEASE_EXISTS" >> $GITHUB_OUTPUT
+          echo "Release v$RELEASE_VERSION exists: $RELEASE_EXISTS"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get file sizes and checksums
+        id: file_info
+        if: steps.check_files.outputs.FILES_EXIST == 'true' && steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          echo "## File Information" > file_info.md
+          echo "" >> file_info.md
+          
+          # macOS DMG
+          if [ -f "quran-vocabulary.dmg" ]; then
+            DMG_SIZE=$(du -h "quran-vocabulary.dmg" | cut -f1)
+            DMG_SHA256=$(sha256sum "quran-vocabulary.dmg" | cut -d' ' -f1)
+            echo "### macOS (DMG)" >> file_info.md
+            echo "- **Size:** $DMG_SIZE" >> file_info.md
+            echo "- **SHA256:** \`$DMG_SHA256\`" >> file_info.md
+            echo "" >> file_info.md
+          fi
+          
+          # Windows MSI
+          if [ -f "quran-vocabulary.msi" ]; then
+            MSI_SIZE=$(du -h "quran-vocabulary.msi" | cut -f1)
+            MSI_SHA256=$(sha256sum "quran-vocabulary.msi" | cut -d' ' -f1)
+            echo "### Windows (MSI)" >> file_info.md
+            echo "- **Size:** $MSI_SIZE" >> file_info.md
+            echo "- **SHA256:** \`$MSI_SHA256\`" >> file_info.md
+            echo "" >> file_info.md
+          fi
+          
+          # Linux DEB
+          if [ -f "quran-vocabulary.deb" ]; then
+            DEB_SIZE=$(du -h "quran-vocabulary.deb" | cut -f1)
+            DEB_SHA256=$(sha256sum "quran-vocabulary.deb" | cut -d' ' -f1)
+            echo "### Linux (DEB)" >> file_info.md
+            echo "- **Size:** $DEB_SIZE" >> file_info.md
+            echo "- **SHA256:** \`$DEB_SHA256\`" >> file_info.md
+            echo "" >> file_info.md
+          fi
+
+      - name: Create release notes
+        id: release_notes
+        if: steps.check_files.outputs.FILES_EXIST == 'true' && steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          RELEASE_VERSION="${{ steps.version_info.outputs.RELEASE_VERSION }}"
+          MACOS_VERSION="${{ steps.version_info.outputs.MACOS_VERSION }}"
+          WINDOWS_VERSION="${{ steps.version_info.outputs.WINDOWS_VERSION }}"
+          LINUX_VERSION="${{ steps.version_info.outputs.LINUX_VERSION }}"
+          
+          cat > release_notes.md << EOF
+          # Quran Vocabulary v$RELEASE_VERSION
+          
+          Desktop applications for all major platforms are now available!
+          
+          ## Platform Versions
+          - **macOS:** $MACOS_VERSION
+          - **Windows:** $WINDOWS_VERSION  
+          - **Linux:** $LINUX_VERSION
+          
+          ## Downloads
+          - **macOS:** Download \`quran-vocabulary.dmg\` for macOS 10.14+ (Intel & Apple Silicon)
+          - **Windows:** Download \`quran-vocabulary.msi\` for Windows 10+ (64-bit)
+          - **Linux:** Download \`quran-vocabulary.deb\` for Ubuntu/Debian-based distributions
+          
+          ## Installation Instructions
+          
+          ### macOS
+          1. Download \`quran-vocabulary.dmg\`
+          2. Open the DMG file
+          3. Drag the app to your Applications folder
+          
+          ### Windows
+          1. Download \`quran-vocabulary.msi\`
+          2. Run the installer as administrator
+          3. Follow the installation wizard
+          
+          ### Linux
+          1. Download \`quran-vocabulary.deb\`
+          2. Install using: \`sudo dpkg -i quran-vocabulary.deb\`
+          3. Or double-click to install via Software Center
+          
+          $(cat file_info.md)
+          
+          ## What's New
+          - Cross-platform desktop application
+          - Native performance on all platforms
+          - Consistent user experience across operating systems
+          
+          ---
+          
+          **Note:** If you encounter any issues, please report them on our [Issues page](https://github.com/${{ github.repository }}/issues).
+          EOF
+
+      - name: Create GitHub Release
+        if: steps.check_files.outputs.FILES_EXIST == 'true' && steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          RELEASE_VERSION="${{ steps.version_info.outputs.RELEASE_VERSION }}"
+          
+          # Create the release
+          gh release create "v$RELEASE_VERSION" \
+            --title "Quran Vocabulary v$RELEASE_VERSION" \
+            --notes-file release_notes.md \
+            --draft=false \
+            --prerelease=false \
+            quran-vocabulary.dmg \
+            quran-vocabulary.msi \
+            quran-vocabulary.deb
+          
+          echo "✅ Release v$RELEASE_VERSION created successfully!"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update latest release info
+        if: steps.check_files.outputs.FILES_EXIST == 'true' && steps.check_release.outputs.RELEASE_EXISTS == 'false'
+        run: |
+          RELEASE_VERSION="${{ steps.version_info.outputs.RELEASE_VERSION }}"
+          
+          # Create/update a latest.txt file with current version
+          echo "$RELEASE_VERSION" > latest.txt
+          
+          # Commit the latest.txt file
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add latest.txt
+          git commit -m "Update latest release to v$RELEASE_VERSION" || echo "No changes to commit"
+          git push
+
+      - name: Summary
+        run: |
+          echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_files.outputs.FILES_EXIST }}" = "true" ]; then
+            if [ "${{ steps.check_release.outputs.RELEASE_EXISTS }}" = "false" ]; then
+              echo "✅ **Success!** Created release v${{ steps.version_info.outputs.RELEASE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Released Files:" >> $GITHUB_STEP_SUMMARY
+              echo "- 🍎 quran-vocabulary.dmg (macOS)" >> $GITHUB_STEP_SUMMARY
+              echo "- 🪟 quran-vocabulary.msi (Windows)" >> $GITHUB_STEP_SUMMARY
+              echo "- 🐧 quran-vocabulary.deb (Linux)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "ℹ️ **Info:** Release v${{ steps.version_info.outputs.RELEASE_VERSION }} already exists" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⏳ **Waiting:** Missing platform files: ${{ steps.check_files.outputs.MISSING_FILES }}" >> $GITHUB_STEP_SUMMARY
+          fi
