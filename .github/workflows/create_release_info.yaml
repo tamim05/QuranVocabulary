@@ -5,9 +5,11 @@ on:
     types: [published]
   workflow_dispatch:   # allows manual trigger
 
+permissions:
+  contents: write   # ✅ allow creating/updating releases
+
 jobs:
   generate-links:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -19,28 +21,28 @@ jobs:
           script: |
             let release;
             if (context.eventName === "release") {
-              // triggered by release event
               release = context.payload.release;
             } else {
-              // manual trigger -> get latest release
               const latest = await github.rest.repos.getLatestRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
               });
               release = latest.data;
             }
-            return release;
+            core.setOutput("id", release.id);
+            core.setOutput("tag", release.tag_name);
+            core.setOutput("data", JSON.stringify(release));
 
       - name: Generate latest.txt
         run: |
           echo "Latest Release Links:" > latest.txt
           echo "" >> latest.txt
-          echo '${{ steps.release.outputs.result }}' | jq -r '.assets[].browser_download_url' >> latest.txt
+          echo '${{ steps.release.outputs.data }}' | jq -r '.assets[].browser_download_url' >> latest.txt
 
       - name: Upload latest.txt
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          tag_name: ${{ fromJson(steps.release.outputs.result).tag_name }}
+          tag_name: ${{ steps.release.outputs.tag }}   # ✅ correct tag name
           files: latest.txt
