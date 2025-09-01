@@ -11,31 +11,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get release info
+      - name: Fetch release info
         id: release
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const release = await github.rest.repos.getRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: context.payload.release.id,
-            });
-            return release.data;
+            let release;
+            if (context.eventName === "release") {
+              // triggered by release event
+              release = context.payload.release;
+            } else {
+              // manual trigger -> get latest release
+              const latest = await github.rest.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              release = latest.data;
+            }
+            return release;
 
       - name: Generate latest.txt
         run: |
           echo "Latest Release Links:" > latest.txt
           echo "" >> latest.txt
-          for asset in $(jq -r '.assets[].browser_download_url' <<< '${{ steps.release.outputs.result }}'); do
-            echo "$asset" >> latest.txt
-          done
+          echo '${{ steps.release.outputs.result }}' | jq -r '.assets[].browser_download_url' >> latest.txt
 
       - name: Upload latest.txt
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ fromJson(steps.release.outputs.result).tag_name }}
           files: latest.txt
