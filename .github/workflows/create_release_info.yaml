@@ -3,9 +3,11 @@ name: Generate Latest Links
 on:
   release:
     types: [published]
+  workflow_dispatch:   # allows manual trigger
 
 jobs:
   generate-links:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
