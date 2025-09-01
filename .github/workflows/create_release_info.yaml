@@ -33,16 +33,16 @@ jobs:
             core.setOutput("tag", release.tag_name);
             core.setOutput("data", JSON.stringify(release));
 
-      - name: Generate latest.txt
+      - name: Generate latest-release.txt
         run: |
-          echo "Latest Release Links:" > latest.txt
-          echo "" >> latest.txt
-          echo '${{ steps.release.outputs.data }}' | jq -r '.assets[].browser_download_url' >> latest.txt
+          echo "Latest Release Links:" > latest-release.txt
+          echo "" >> latest-release.txt
+          echo '${{ steps.release.outputs.data }}' | jq -r '.assets[].browser_download_url' >> latest-release.txt
 
-      - name: Upload latest.txt
+      - name: Upload latest-release.txt
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           tag_name: ${{ steps.release.outputs.tag }}   # ✅ correct tag name
-          files: latest.txt
+          files: latest-release.txt
